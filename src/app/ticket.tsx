@@ -1,17 +1,42 @@
 import { FontAwesome } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
+import { Redirect } from 'expo-router'
+import { MotiView } from 'moti'
 import { useState } from 'react'
-import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
 import { Header } from '@/components/Header'
 import { QRCode } from '@/components/QRCode'
 import { Button } from '@/components/button'
 import { Credential } from '@/components/credential'
+import { useBadgeStore } from '@/store/badge-store'
 import { colors } from '@/styles/colors'
 
 export default function Ticket() {
-  const [uri, setUri] = useState('')
   const [isQRCodeExpanded, setIsQRCodeExpanded] = useState(false)
+
+  const badgeStore = useBadgeStore()
+
+  async function handleShare() {
+    try {
+      if (badgeStore.data?.checkInURL) {
+        await Share.share({
+          message: badgeStore.data.checkInURL,
+        })
+      }
+    } catch (error) {
+      console.log(error)
+      Alert.alert('Compartilhar', 'Não foi possível compartilhar')
+    }
+  }
 
   async function handleSelectImage() {
     try {
@@ -22,11 +47,15 @@ export default function Ticket() {
       })
 
       if (result.assets) {
-        setUri(result.assets[0].uri)
+        badgeStore.updateAvatar(result.assets[0].uri)
       }
     } catch (error) {
       console.log(error)
     }
+  }
+
+  if (!badgeStore.data?.checkInURL) {
+    return <Redirect href="/" />
   }
 
   return (
@@ -39,29 +68,40 @@ export default function Ticket() {
         showsVerticalScrollIndicator={false}
       >
         <Credential
-          uri={uri}
+          data={badgeStore.data}
           onChangeAvatar={handleSelectImage}
           onExpandQRCode={() => setIsQRCodeExpanded(true)}
         />
 
-        <FontAwesome
-          name="angle-double-down"
-          size={24}
-          color={colors.gray[300]}
-          className="self-center my-6"
-        />
+        <MotiView
+          from={{ translateY: 0 }}
+          animate={{ translateY: 15 }}
+          transition={{ loop: true, type: 'timing', duration: 800 }}
+        >
+          <FontAwesome
+            name="angle-double-down"
+            size={24}
+            color={colors.gray[300]}
+            className="self-center my-6"
+          />
+        </MotiView>
 
         <Text className="text-white font-bold text-2xl mt-4">
           Compartilhar credencial
         </Text>
 
         <Text className="text-white font-regular text-base mt-1 mb-6">
-          Mostre ao mundo que você vai participar do United summit!
+          Mostre ao mundo que você vai participar do evento{' '}
+          {badgeStore.data.eventTitle}!
         </Text>
 
-        <Button>Compartilhar</Button>
+        <Button onPress={handleShare}>Compartilhar</Button>
 
-        <TouchableOpacity activeOpacity={0.8} className="mt-10">
+        <TouchableOpacity
+          activeOpacity={0.8}
+          className="mt-10"
+          onPress={() => badgeStore.remove()}
+        >
           <Text className="text-base text-white font-bold text-center">
             Remover Ingresso
           </Text>

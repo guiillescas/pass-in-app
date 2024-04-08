@@ -1,21 +1,42 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Image, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { Link, Redirect } from 'expo-router'
+import { useState } from 'react'
+import { Alert, Image, View } from 'react-native'
 
-import { Input } from '@/components/Input';
-import { Button } from '@/components/button';
-import { colors } from '@/styles/colors';
+import { Input } from '@/components/Input'
+import { Button } from '@/components/button'
+import { api } from '@/server/api'
+import { useBadgeStore } from '@/store/badge-store'
+import { colors } from '@/styles/colors'
 
 export default function Home() {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  function handleAccessCredential() {
-    if (!code.trim()) {
-      return Alert.alert('Credencial', 'Informe o código do ingresso');
+  const badgeStore = useBadgeStore()
+
+  async function handleAccessCredential() {
+    try {
+      setIsLoading(true)
+
+      if (!code.trim()) {
+        return Alert.alert('Credencial', 'Informe o código do ingresso')
+      }
+
+      const { data } = await api.get(`/attendees/${code}/badge`)
+      console.log({ data })
+
+      badgeStore.save(data.badge)
+    } catch (error) {
+      console.log(error)
+
+      Alert.alert('Ingresso', 'Ingresso não encontrado')
+      setIsLoading(false)
     }
+  }
 
-    console.warn(code);
+  if (badgeStore.data?.checkInURL) {
+    return <Redirect href="/ticket" />
   }
 
   return (
@@ -40,14 +61,17 @@ export default function Home() {
           />
         </Input>
 
-        <Button onPress={handleAccessCredential}>Verificar credencial</Button>
+        <Button onPress={handleAccessCredential} isLoading={isLoading}>
+          Verificar credencial
+        </Button>
 
         <Link
           href="/register"
-          className="text-gray-100 text-base font-bold text-center mt-8">
+          className="text-gray-100 text-base font-bold text-center mt-8"
+        >
           Ainda não possuo ingresso
         </Link>
       </View>
     </View>
-  );
+  )
 }
